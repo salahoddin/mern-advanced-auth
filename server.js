@@ -3,6 +3,7 @@ require('dotenv').config({
 })
 const connectDB = require('./backend/config/db')
 const userRoutes = require('./backend/routes/userRoutes')
+const privateRoutes = require('./backend/routes/privateRoutes')
 const errorHandler = require('./backend/middlewares/error')
 
 connectDB()
@@ -14,6 +15,7 @@ const app = express()
 app.use(express.json())
 
 app.use('/api/users', userRoutes)
+app.use('/api/private', privateRoutes)
 
 // error handler should be last piece of middleware
 app.use(errorHandler)
