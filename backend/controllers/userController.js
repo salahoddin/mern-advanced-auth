@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const User = require('../models/userModel')
 const ErrorResponse = require('../utils/errorResponse')
 const sendEmail = require('../utils/sendEmail')
@@ -32,7 +33,7 @@ exports.login = async (req, res, next) => {
 		if (!user) {
 			return next(new ErrorResponse('Invalid credentials', 401))
 		}
-		const isMatch = user.matchPasswords(password)
+		const isMatch = await user.matchPasswords(password)
 
 		if (!isMatch) {
 			return next(new ErrorResponse('Invalid credentials', 401))
@@ -90,8 +91,38 @@ exports.forgotPassword = async (req, res, next) => {
 	}
 }
 
-exports.resetPassword = (req, res, next) => {
-	res.send('Reset PW Route')
+exports.resetPassword = async (req, res, next) => {
+	let resetPasswordToken = crypto
+		.createHash('sha256')
+		.update(req.params.resetToken)
+		.digest('hex')
+
+	try {
+		const user = await User.findOne({
+			resetPasswordToken: resetPasswordToken,
+			resetPasswordExpire: { $gt: Date.now() },
+		})
+
+		if (!user) {
+			return next(new ErrorResponse('Invalid reset token', 400)) // 400 bad request
+		}
+
+		// reassign to new password
+		user.password = req.body.password
+
+		// reset variables
+		resetPasswordToken = undefined
+		resetPasswordExpire = undefined
+
+		await user.save()
+
+		res.status(201).json({
+			success: true,
+			data: 'Password has been reset successfully',
+		})
+	} catch (error) {
+		next(error)
+	}
 }
 
 // make it a method to avoid retyping over and over
